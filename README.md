@@ -1,5 +1,6 @@
-# HotNano Backend
+# HotNano
 
 ## Dependencies
 
-- Docker (**lol**)
+- Docker
+- Composer
