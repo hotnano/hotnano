@@ -8,4 +8,5 @@ cd "${SCRIPT_BASEDIR}/.."
 mkdir -p tmp/twig_cache
 
 set -x
-./bin/console hotnano:update $*
+
+./bin/console hotnano:update --rpc_port 7080 $*

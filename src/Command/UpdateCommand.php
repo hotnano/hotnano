@@ -3,6 +3,7 @@
 namespace HotNano\Command;
 
 use HotNano\Service\DatabaseService;
+use HotNano\Service\NanoService;
 use HotNano\Service\RenderService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -26,8 +27,13 @@ class UpdateCommand extends Command
         $webDefaultPath = realpath(sprintf('%s/../../web', __DIR__));
         $templatesDefaultPath = realpath(sprintf('%s/../../templates', __DIR__));
 
-        $this->addOption('--output', '-o', InputOption::VALUE_OPTIONAL, 'Output path for HTML files.', $webDefaultPath);
-        $this->addOption('--templates', '-t', InputOption::VALUE_OPTIONAL, 'Path to template directory.', $templatesDefaultPath);
+        $this
+            ->addOption('--output', null, InputOption::VALUE_OPTIONAL, 'Output path for HTML files.', $webDefaultPath)
+            ->addOption('--templates', null, InputOption::VALUE_OPTIONAL, 'Path to template directory.', $templatesDefaultPath)
+            ->addOption('--timeout', null, InputOption::VALUE_OPTIONAL, 'Spam protection in seconds.', 60)
+            ->addOption('--rpc_host',null,InputOption::VALUE_OPTIONAL,'RPC Host to Nano Core client.','127.0.0.1')
+            ->addOption('--rpc_port',null,InputOption::VALUE_OPTIONAL,'RPC Port to Nano Core client.',7076)
+        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -35,6 +41,8 @@ class UpdateCommand extends Command
         $app = $this->getApplication();
         $appVersion = $app->getVersion();
         $appName = $app->getName();
+        $rpcHost=$input->getOption('rpc_host');
+        $rpcPort=intval($input->getOption('rpc_port'));
 
         $this->io = new SymfonyStyle($input, $output);
 
@@ -43,12 +51,21 @@ class UpdateCommand extends Command
 
         $cachePath = realpath(sprintf('%s/../../tmp/twig_cache', __DIR__));
 
-        $dbFilePath=realpath(sprintf('%s/db.yml', $webPath));
-        $dbService=new DatabaseService($dbFilePath);
-        $dbService->loadDb();
-        $dbService->saveDb();
+        $nanoService=new NanoService($rpcHost,$rpcPort);
 
-        //$renderService = new RenderService($webPath, $templatesPath, $cachePath, $this->io, $appName, $appVersion);
-        //$renderService->renderIndex();
+        $dbFilePath = sprintf('%s/db.yml', $webPath);
+        $dbService = new DatabaseService($dbFilePath);
+        $dbService->loadDb();
+        $entities = $dbService->getEntities();
+
+        $dbService->setEntities($entities);
+
+        // We don't know which entities has been changed, so force save.
+        $dbService->saveDb(true);
+
+        $renderService = new RenderService($webPath, $templatesPath, $cachePath, $this->io, $appName, $appVersion);
+        $renderService->renderIndex([
+            'entities' => $entities,
+        ]);
     }
 }

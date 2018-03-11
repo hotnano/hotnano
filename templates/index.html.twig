@@ -3,11 +3,32 @@
 {% block body %}
     <h1>Hello World</h1>
 
-    <p>RULES RULEZ!</p>
+    <p>GAME RULES</p>
 
-    <table>
+    <table border="1">
         <tr>
-            <td>xyz</td>
+            <td>NAME</td>
+            <td>IMAGE</td>
+            <td>OWNER ADDRESS</td>
+            <td>OWNER SINCE</td>
+            <td>CURRENT PRICE</td>
+            <td>TARGET PRICE</td>
         </tr>
+        {% for entity in entities %}
+            <tr>
+                <td>{{ entity.name }}</td>
+                <td>{{ entity.image }}</td>
+                <td>{{ entity.ownerAddress }}</td>
+
+                {% if entity.ownerSince is defined and entity.ownerSince %}
+                    <td>{{ entity.ownerSince | date('Y-m-d H:i:s O') }}</td>
+                {% else %}
+                    <td>&nbsp;</td>
+                {% endif %}
+
+                <td>{{ entity.currentPrice }}</td>
+                <td>{{ entity.targetPrice }}</td>
+            </tr>
+        {% endfor %}
     </table>
 {% endblock %}
