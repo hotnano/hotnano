@@ -7,15 +7,20 @@
 
     <table border="1">
         <tr>
+            <td>ID</td>
             <td>NAME</td>
             <td>IMAGE</td>
             <td>OWNER ADDRESS</td>
             <td>OWNER SINCE</td>
             <td>CURRENT PRICE</td>
             <td>TARGET PRICE</td>
+            <td>TARGET ADDRESS</td>
+            <td>TARGET TIME</td>
+            <td>CAN BE CLAIMED</td>
         </tr>
         {% for entity in entities %}
             <tr>
+                <td>{{ entity.id }}</td>
                 <td>{{ entity.name }}</td>
                 <td>{{ entity.image }}</td>
                 <td>{{ entity.ownerAddress }}</td>
@@ -28,6 +33,15 @@
 
                 <td>{{ entity.currentPrice }}</td>
                 <td>{{ entity.targetPrice }}</td>
+
+                {% if entity.canBeClaimed %}
+                    <td>{{ entity.targetAddress }}</td>
+                {% else %}
+                    <td>Cannot be claimed. Wait until {{ entity.targetTimeFormatted }}.</td>
+                {% endif %}
+
+                <td>{{ entity.targetTimeFormatted }}</td>
+                <td>{{ entity.canBeClaimed ? 'YES' : 'NO' }}</td>
             </tr>
         {% endfor %}
     </table>

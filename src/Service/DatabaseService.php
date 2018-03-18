@@ -74,7 +74,7 @@ class DatabaseService
 
         // Then convert objects to strings.
         $db['created_at'] = $this->db['created_at']->format('c');
-        $db['updated_at'] = Carbon::now()->format('c');
+        $db['updated_at'] = Carbon::now('UTC')->format('c');
 
         $db['data']['entities'] = array_map(function (Entity $entity) {
             return $entity->toArray();
@@ -92,8 +92,8 @@ class DatabaseService
     {
         $this->db = [
             'version' => 1,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => Carbon::now('UTC'),
+            'updated_at' => Carbon::now('UTC'),
             'data' => [
                 'entities' => [],
             ],
@@ -101,6 +101,9 @@ class DatabaseService
         $this->loaded = true;
     }
 
+    /**
+     * @return Entity[]
+     */
     public function getEntities()
     {
         return $this->db['data']['entities'];

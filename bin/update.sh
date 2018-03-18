@@ -9,4 +9,4 @@ mkdir -p tmp/twig_cache
 
 set -x
 
-./bin/console hotnano:update --rpc_port 7080 $*
+./bin/console hotnano:update $*
