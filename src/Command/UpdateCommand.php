@@ -113,12 +113,15 @@ class UpdateCommand extends Command
 
                     $balanceTmp = $nanoService->getAccountBalance($entity->getTargetAddress());
                     if ($balanceTmp['pending'] === '0') {
+                        $entity->setHasPending(false);
+
                         $balanceRai = $nanoService->raiFromRaw($balanceTmp['balance']);
                         $balanceInt = intval($balanceRai);
 
                         $restBalanceInt = $balanceInt;
-                        $restBalanceInt -= $targetPrice;
-                        $restBalanceInt += intval($currentPrice);
+                        // $restBalanceInt -= $targetPrice;
+                        // $restBalanceInt += intval($currentPrice);
+                        // $restBalanceInt -= intval($currentPrice); // @todo
 
                         // $this->io->text(sprintf(' -> new offset: %d', $newOffset));
                         $this->io->text(sprintf(' -> new owner: %s', $newOwner ? $newOwner['account'] : 'N/A'));
@@ -138,6 +141,9 @@ class UpdateCommand extends Command
                             if (null === $oldOwner) {
                             } else {
                                 if ($balanceInt >= $targetPrice) {
+
+
+
                                     // Send Target Price back to Owner.
                                     $blockId = $nanoService->send($targetAddress, $oldOwner, $targetPriceRaw);
                                     $this->io->text(sprintf(' -> winner: %s %s %s', $oldOwner, $targetPriceRaw, $blockId));

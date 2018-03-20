@@ -179,7 +179,9 @@ class NanoService
         $lastPoint = null === $frontier;
         // $newFrontier=null;
         $owner = null;
+        $ownerAmount = null;
         $refunds = [];
+        $refundsAmount = 0;
         foreach ($totalHistory as $row) {
             printf("history row: %s %s\n", $row['hash'], $row['amount']);
 
@@ -198,10 +200,12 @@ class NanoService
             if ($targetPrice === $rai && null === $owner && $oldOwner !== $row['account']) {
                 printf(" -> match '%s' === '%s'\n", $targetPrice, $rai);
                 $owner = $row;
+                $ownerAmount = $rai;
             } else {
                 // Refund
                 printf(" -> refund '%s'\n", $rai);
                 $refunds[] = $row;
+                $refundsAmount += $rai;
             }
         }
 
@@ -209,7 +213,9 @@ class NanoService
             // 'page'=>$page,
             // 'offset' => $offset,
             'owner' => $owner,
+            'owner_amount' => $ownerAmount,
             'refunds' => $refunds,
+            'refunds_amount' => $refundsAmount,
             'frontier' => $frontier,
         ];
     }

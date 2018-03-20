@@ -47,6 +47,11 @@ class Entity
     private $currentPrice;
 
     /**
+     * @var string|null
+     */
+    private $currentAddress;
+
+    /**
      * Amount of Nanos to pay to become the new Owner.
      *
      * @var int|null
@@ -233,6 +238,22 @@ class Entity
         $this->currentPrice = $currentPrice;
 
         $this->update();
+    }
+
+    /**
+     * @return null|string
+     */
+    public function getCurrentAddress(): ?string
+    {
+        return $this->currentAddress;
+    }
+
+    /**
+     * @param null|string $currentAddress
+     */
+    public function setCurrentAddress(?string $currentAddress): void
+    {
+        $this->currentAddress = $currentAddress;
     }
 
     /**
@@ -435,6 +456,8 @@ class Entity
             'owned_since' => $ownerSince,
 
             'current_price' => $this->getCurrentPrice(),
+            'current_address'=>'',//@todo
+
             'target_price' => $this->getTargetPrice(),
             'target_address' => $this->getTargetAddress(),
             'target_time' => $targetTime,
@@ -487,6 +510,11 @@ class Entity
                 },
                 'setter' => 'setCurrentPrice',
             ],
+            [
+                'name' => 'current_address',
+                'setter' => 'setCurrentAddress',
+            ],
+
             [
                 'name' => 'target_price',
                 'converter_fn' => function ($val) {
