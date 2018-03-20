@@ -11,5 +11,6 @@
     {% block body %}{% endblock %}
 
     <p>Copyright &copy; 2018 Mr. Nano &mdash; {{ app_name }} v{{ app_version }}</p>
+    <p>System Time: {{ 'now' | date('Y-m-d H:i:s T') }}</p>
 </body>
 </html>

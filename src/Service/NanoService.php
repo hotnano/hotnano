@@ -147,45 +147,70 @@ class NanoService
         return $result['amount'];
     }
 
-    public function findNewOwner(string $accountId, int $offset, string $targetPrice)
+    public function findNewOwner(string $accountId, ?string $frontier, string $targetPrice, ?string $oldOwner)
     {
-        $owner = null;
-        $refunds = [];
-
-        throw new \RuntimeException('WRONG IMPLEMENTATION'); // @todo
-
         $page = 0;
+        $offset = 0;
+        $totalHistory = [];
         do {
             $page++;
 
             // Process History since last frontier.
-            $history = $this->getAccountHistory($accountId, $offset, 2);
+            $history = $this->getAccountHistory($accountId, $offset, 100);
             $historyCount = count($history);
-            foreach ($history as $row) {
-                printf("history row p=%d o=%d: %s\n", $page, $offset, $row['hash']);
 
+            // rsort($history);
+            foreach ($history as $row) {
                 $offset++;
 
                 if ('receive' != $row['type']) {
                     continue;
                 }
 
-                $rai = $this->raiFromRaw($row['amount']);
+                $totalHistory[] = $row;
 
-                if ($targetPrice == $rai) {
-                    printf(" -> match '%s' == '%s'\n", $targetPrice, $rai);
-                    $owner = $row;
-                } else {
-                    // Refund
-                    $refunds[] = $row;
-                }
+                printf("history row p=%d o=%d: %s\n", $page, $offset, $row['hash']);
             }
-        } while ($page <= 1000 && $historyCount > 0);
+            print("\n");
+        } while ($page <= 10000 && $historyCount > 0);
+
+        $totalHistory = array_reverse($totalHistory);
+
+        $lastPoint = null === $frontier;
+        // $newFrontier=null;
+        $owner = null;
+        $refunds = [];
+        foreach ($totalHistory as $row) {
+            printf("history row: %s %s\n", $row['hash'], $row['amount']);
+
+            if (!$lastPoint) {
+                if ($row['hash'] == $frontier) {
+                    $lastPoint = true;
+                }
+                continue;
+            }
+
+            $frontier = $row['hash'];
+
+            $rai = $this->raiFromRaw($row['amount']);
+
+            // When exact amount matches, and when it's a different owner.
+            if ($targetPrice === $rai && null === $owner && $oldOwner !== $row['account']) {
+                printf(" -> match '%s' === '%s'\n", $targetPrice, $rai);
+                $owner = $row;
+            } else {
+                // Refund
+                printf(" -> refund '%s'\n", $rai);
+                $refunds[] = $row;
+            }
+        }
 
         return [
-            'offset' => $offset,
+            // 'page'=>$page,
+            // 'offset' => $offset,
             'owner' => $owner,
             'refunds' => $refunds,
+            'frontier' => $frontier,
         ];
     }
 }

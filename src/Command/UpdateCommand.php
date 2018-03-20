@@ -94,68 +94,115 @@ class UpdateCommand extends Command
                 }
 
                 if ($entity->canBeClaimed()) {
-                    $this->io->text(sprintf(' -> can be claimed'));
+                    $this->io->text(sprintf(' -> can be claimed: %s', $entity->getTargetTimeFormatted()));
 
+                    $oldOwner = $entity->getOwnerAddress();
                     $targetAddress = $entity->getTargetAddress();
-                    // $frontier = $entity->getFrontier();
-                    $offset = $entity->getHistoryOffset();
+                    $frontier = $entity->getFrontier();
+                    // $offset = $entity->getHistoryOffset();
                     $targetPrice = $entity->getTargetPrice();
-                    // $targetPriceRaw = $nanoService->raiToRaw($targetPrice);
+                    $targetPriceRaw = $nanoService->raiToRaw($targetPrice);
+                    $currentPrice = $entity->getCurrentPrice();
 
                     [
-                        'offset' => $newOffset,
+                        // 'offset' => $newOffset,
                         'owner' => $newOwner,
                         'refunds' => $refunds,
-                    ] = $nanoService->findNewOwner($targetAddress, $offset, $targetPrice);
+                        'frontier' => $newFrontier,
+                    ] = $nanoService->findNewOwner($targetAddress, $frontier, $targetPrice, $oldOwner);
 
                     $balanceTmp = $nanoService->getAccountBalance($entity->getTargetAddress());
+                    if ($balanceTmp['pending'] === '0') {
+                        $balanceRai = $nanoService->raiFromRaw($balanceTmp['balance']);
+                        $balanceInt = intval($balanceRai);
 
-                    $balanceRai = $nanoService->raiFromRaw($balanceTmp['balance']);
-                    $balanceInt = intval($balanceRai);
+                        $restBalanceInt = $balanceInt;
+                        $restBalanceInt -= $targetPrice;
+                        $restBalanceInt += intval($currentPrice);
 
-                    $this->io->text(sprintf(' -> new offset: %d', $newOffset));
-                    $this->io->text(sprintf(' -> new owner: %s', $newOwner ? $newOwner:'N/A'));
-                    $this->io->text(sprintf(' -> refunds: %d', count($refunds)));
+                        // $this->io->text(sprintf(' -> new offset: %d', $newOffset));
+                        $this->io->text(sprintf(' -> new owner: %s', $newOwner ? $newOwner['account'] : 'N/A'));
+                        $this->io->text(sprintf(' -> refunds: %d', count($refunds)));
 
-                    $this->io->text(sprintf(' -> balance raw: %s', $balanceTmp['balance']));
-                    $this->io->text(sprintf(' -> balance rai: %s', $balanceRai));
-                    $this->io->text(sprintf(' -> balance int: %d', $balanceRai));
-                    $this->io->text(sprintf(' -> pending raw: %s', $balanceTmp['pending']));
+                        $this->io->text(sprintf(' -> balance raw: %s', $balanceTmp['balance']));
+                        $this->io->text(sprintf(' -> balance rai: %s', $balanceRai));
+                        $this->io->text(sprintf(' -> balance int: %d', $balanceInt));
+                        $this->io->text(sprintf(' -> balance rest: %d', $restBalanceInt));
+                        $this->io->text(sprintf(' -> pending raw: %s', $balanceTmp['pending']));
 
-                    $entity->setHistoryOffset($newOffset);
+                        // $entity->setHistoryOffset($newOffset);
+                        $entity->setFrontier($newFrontier);
 
-                    if (null !== $newOwner) {
-                        $oldOwner = $entity->getOwnerAddress();
-                        if (null === $oldOwner) {
-                            //
-                        } else {
-                            //@todo
+                        if (null !== $newOwner) {
+
+                            if (null === $oldOwner) {
+                            } else {
+                                if ($balanceInt >= $targetPrice) {
+                                    // Send Target Price back to Owner.
+                                    $blockId = $nanoService->send($targetAddress, $oldOwner, $targetPriceRaw);
+                                    $this->io->text(sprintf(' -> winner: %s %s %s', $oldOwner, $targetPriceRaw, $blockId));
+
+                                    // Generate new Target Address.
+                                    $newTargetAddress = $nanoService->createNewAccount();
+                                    $entity->setTargetAddress($newTargetAddress);
+                                    $entity->setFrontier(null);
+                                }
+                            }
+
+                            // Set new Owner.
+                            $entity->setOwnerAddress($newOwner['account']);
+                            $entity->setOwnedSince(Carbon::now('UTC'));
+
+                            // Set new Target Time.
+                            $newTargetTime = Carbon::now('UTC');
+                            $newTargetTime->addSeconds($ttl);
+                            $entity->setTargetTime($newTargetTime);
+
+                            // Set new Target Price.
+                            $newTargetPrice = $entity->getTargetPrice() * 2;
+                            $entity->setTargetPrice($newTargetPrice);
+
+                            // Set Target Price as new Current Price.
+                            $entity->setCurrentPrice($targetPrice);
                         }
-                    }
 
-                    // Calculate refund amount.
-                    $refundAmountTotal = 0;
-                    foreach ($refunds as $refund) {
-                        $refundAmountRaw = $refund['amount'];
-                        $refundAmountRai = $nanoService->raiFromRaw($refundAmountRaw);
-                        $refundAmountInt = intval($refundAmountRai);
-
-                        $refundAmountTotal += $refundAmountInt;
-                    }
-
-                    // Refund only if rest balance is equal to refund amount.
-                    if ($balanceInt === $refundAmountTotal) {
-                        // Execute Refund
+                        // Calculate refund amount.
+                        $refundAmountTotal = 0;
                         foreach ($refunds as $refund) {
-                            $sender = $refund['account'];
                             $refundAmountRaw = $refund['amount'];
-                            // $refundAmountRai=$nanoService->raiFromRaw($refundAmountRaw);
-                            // $refundAmountInt=intval($refundAmountRai);
+                            $refundAmountRai = $nanoService->raiFromRaw($refundAmountRaw);
+                            $refundAmountInt = intval($refundAmountRai);
 
-                            $blockId = $nanoService->send($targetAddress, $sender, $refundAmountRaw);
+                            $this->io->text(sprintf(' -> collect refund: %d', $refundAmountInt));
 
-                            $this->io->text(sprintf(' -> refund: %s %s %s', $targetAddress, $sender, $blockId));
+                            $refundAmountTotal += $refundAmountInt;
                         }
+
+                        $this->io->text(sprintf(' -> total refund: %d', $refundAmountTotal));
+
+                        // Refund only if rest balance is equal to refund amount.
+                        if ($restBalanceInt === $refundAmountTotal) {
+                            // Execute Refund
+                            foreach ($refunds as $refund) {
+                                $sender = $refund['account'];
+                                $refundAmountRaw = $refund['amount'];
+                                $refundAmountRai = $nanoService->raiFromRaw($refundAmountRaw);
+                                $refundAmountInt = intval($refundAmountRai);
+
+                                $blockId = $nanoService->send($targetAddress, $sender, $refundAmountRaw);
+
+                                $this->io->text(sprintf(' -> refund: %s %s %s %d', $targetAddress, $sender, $blockId, $refundAmountInt));
+                            }
+                        } else {
+                            if (count($refunds) > 0) {
+                                $this->io->text(sprintf(' -> refund not possible: "%d" !== "%d"', $restBalanceInt, $refundAmountTotal));
+                            }
+                        }
+                    } else {
+                        $this->io->text(sprintf(' -> pending raw: %s', $balanceTmp['pending']));
+                        $this->io->text(sprintf(' -> skip while pending'));
+
+                        $entity->setHasPending(true);
                     }
                 } else {
                     $this->io->text(sprintf(' -> can not be claimed'));

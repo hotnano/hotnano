@@ -5,6 +5,8 @@
 
     <p>GAME RULES</p>
 
+    <p>YOUR FAVORITE MEME NOT HERE? SEND ME AN EMAIL: nanocoinio@gmail.com</p>
+
     <table border="1">
         <tr>
             <td>ID</td>
@@ -25,8 +27,8 @@
                 <td>{{ entity.image }}</td>
                 <td>{{ entity.ownerAddress }}</td>
 
-                {% if entity.ownerSince is defined and entity.ownerSince %}
-                    <td>{{ entity.ownerSince | date('Y-m-d H:i:s O') }}</td>
+                {% if entity.ownedSince is defined and entity.ownedSince %}
+                    <td>{{ entity.ownedSinceFormatted }}</td>
                 {% else %}
                     <td>&nbsp;</td>
                 {% endif %}
@@ -35,7 +37,11 @@
                 <td>{{ entity.targetPrice }}</td>
 
                 {% if entity.canBeClaimed %}
-                    <td>{{ entity.targetAddress }}</td>
+                    {% if entity.hasPending %}
+                        <td>Pending...</td>
+                    {% else %}
+                        <td>{{ entity.targetAddress }}</td>
+                    {% endif %}
                 {% else %}
                     <td>Cannot be claimed. Wait until {{ entity.targetTimeFormatted }}.</td>
                 {% endif %}

@@ -69,10 +69,14 @@ class Entity
     private $targetTime;
 
     /**
+     * @var bool
+     */
+    private $hasPending;
+
+    /**
      * Previous processed block of the history.
      *
      * @var string|null
-     * @deprecated
      */
     private $frontier;
 
@@ -97,6 +101,7 @@ class Entity
         $this->id = $uuid->toString();
         $this->isActive = false;
         $this->historyOffset = 0;
+        $this->hasPending = false;
     }
 
     /**
@@ -193,6 +198,15 @@ class Entity
         return $this->ownedSince;
     }
 
+    public function getOwnedSinceFormatted()
+    {
+        if (null === $this->ownedSince) {
+            return 'N/A';
+        }
+
+        return $this->ownedSince->format('Y-m-d H:i:s');
+    }
+
     /**
      * @param Carbon|null $ownedSince
      */
@@ -285,8 +299,23 @@ class Entity
     }
 
     /**
+     * @return bool
+     */
+    public function isHasPending(): bool
+    {
+        return $this->hasPending;
+    }
+
+    /**
+     * @param bool $hasPending
+     */
+    public function setHasPending(bool $hasPending): void
+    {
+        $this->hasPending = $hasPending;
+    }
+
+    /**
      * @return null|string
-     * @deprecated
      */
     public function getFrontier(): ?string
     {
@@ -295,7 +324,6 @@ class Entity
 
     /**
      * @param null|string $frontier
-     * @deprecated
      */
     public function setFrontier(?string $frontier): void
     {
@@ -323,13 +351,15 @@ class Entity
         if (!$this->isActive()) {
             return false;
         }
+
         if (null === $this->targetAddress) {
             return false;
         }
-        if (null !== $this->targetTime && Carbon::now('UTC') < $this->targetTime) {
+        if (null === $this->targetPrice) {
             return false;
         }
-        if (null === $this->targetPrice) {
+
+        if (null !== $this->targetTime && Carbon::now('UTC') < $this->targetTime) {
             return false;
         }
 
@@ -402,14 +432,15 @@ class Entity
             'image' => $this->getImage(),
 
             'owner_address' => $this->getOwnerAddress(),
-            'owner_since' => $ownerSince,
+            'owned_since' => $ownerSince,
 
             'current_price' => $this->getCurrentPrice(),
             'target_price' => $this->getTargetPrice(),
             'target_address' => $this->getTargetAddress(),
             'target_time' => $targetTime,
+            'has_pending' => $this->isHasPending(),
 
-            // 'frontier' => $this->getFrontier(),
+            'frontier' => $this->getFrontier(),
             'history_offset' => $this->getHistoryOffset(),
 
             'error_message' => $this->getErrorMessage(),
@@ -444,9 +475,9 @@ class Entity
                 'setter' => 'setOwnerAddress',
             ],
             [
-                'name' => 'owner_since',
+                'name' => 'owned_since',
                 'converter_fn' => self::getTimeParseFn(),
-                'setter' => 'setOwnerSince',
+                'setter' => 'setOwnedSince',
             ],
 
             [
@@ -472,10 +503,15 @@ class Entity
                 'converter_fn' => self::getTimeParseFn(),
                 'setter' => 'setTargetTime',
             ],
-            // [
-            //     'name' => 'frontier',
-            //     'setter' => 'setFrontier',
-            // ],
+            [
+                'name' => 'has_pending',
+                'setter' => 'setHasPending',
+            ],
+
+            [
+                'name' => 'frontier',
+                'setter' => 'setFrontier',
+            ],
             [
                 'name' => 'history_offset',
                 'setter' => 'setHistoryOffset',
