@@ -61,6 +61,7 @@ class UpdateCommand extends Command
         $cachePath = realpath(sprintf('%s/../../tmp/twig_cache', __DIR__));
 
         $nanoService = new NanoService($rpcHost, $rpcPort, $walletId);
+        $nanoService->setOutput($output);
 
         $dbFilePath = sprintf('%s/db.yml', $webPath);
         $dbService = new DatabaseService($dbFilePath);
@@ -96,29 +97,31 @@ class UpdateCommand extends Command
                 if ($entity->canBeClaimed()) {
                     $this->io->text(sprintf(' -> can be claimed: %s', $entity->getTargetTimeFormatted()));
 
-                    $oldOwner = $entity->getOwnerAddress();
                     $targetAddress = $entity->getTargetAddress();
-                    $frontier = $entity->getFrontier();
-                    // $offset = $entity->getHistoryOffset();
-                    $targetPrice = $entity->getTargetPrice();
-                    $targetPriceRaw = $nanoService->raiToRaw($targetPrice);
-                    $currentPrice = $entity->getCurrentPrice();
 
-                    [
-                        // 'offset' => $newOffset,
-                        'owner' => $newOwner,
-                        'refunds' => $refunds,
-                        'frontier' => $newFrontier,
-                    ] = $nanoService->findNewOwner($targetAddress, $frontier, $targetPrice, $oldOwner);
-
-                    $balanceTmp = $nanoService->getAccountBalance($entity->getTargetAddress());
+                    $balanceTmp = $nanoService->getAccountBalance($targetAddress);
                     if ($balanceTmp['pending'] === '0') {
                         $entity->setHasPending(false);
+
+                        $oldOwner = $entity->getOwnerAddress();
+                        $frontier = $entity->getFrontier();
+                        $targetPrice = $entity->getTargetPrice();
+                        $targetPriceRaw = $nanoService->raiToRaw($targetPrice);
+                        // $currentPrice = $entity->getCurrentPrice();
+
+                        [
+                            'owner' => $newOwner,
+                            'owner_amount' => $newOwnerAmount,
+                            'refunds' => $refunds,
+                            'refunds_amount' => $refundsAmount,
+                            'frontier' => $newFrontier,
+                        ] = $nanoService->findNewOwner($targetAddress, $frontier, $targetPrice, $oldOwner);
 
                         $balanceRai = $nanoService->raiFromRaw($balanceTmp['balance']);
                         $balanceInt = intval($balanceRai);
 
-                        $restBalanceInt = $balanceInt;
+                        $restBalanceInt = $newOwnerAmount + $refundsAmount;
+                        $diffBalanceInt = $balanceInt - $restBalanceInt;
                         // $restBalanceInt -= $targetPrice;
                         // $restBalanceInt += intval($currentPrice);
                         // $restBalanceInt -= intval($currentPrice); // @todo
@@ -127,10 +130,12 @@ class UpdateCommand extends Command
                         $this->io->text(sprintf(' -> new owner: %s', $newOwner ? $newOwner['account'] : 'N/A'));
                         $this->io->text(sprintf(' -> refunds: %d', count($refunds)));
 
-                        $this->io->text(sprintf(' -> balance raw: %s', $balanceTmp['balance']));
-                        $this->io->text(sprintf(' -> balance rai: %s', $balanceRai));
+                        // $this->io->text(sprintf(' -> balance raw: %s', $balanceTmp['balance']));
+                        // $this->io->text(sprintf(' -> balance rai: %s', $balanceRai));
                         $this->io->text(sprintf(' -> balance int: %d', $balanceInt));
-                        $this->io->text(sprintf(' -> balance rest: %d', $restBalanceInt));
+                        $this->io->text(sprintf(' ->        rest: %d', $restBalanceInt));
+                        $this->io->text(sprintf(' ->        diff: %d', $diffBalanceInt));
+
                         $this->io->text(sprintf(' -> pending raw: %s', $balanceTmp['pending']));
 
                         // $entity->setHistoryOffset($newOffset);
@@ -141,12 +146,10 @@ class UpdateCommand extends Command
                             if (null === $oldOwner) {
                             } else {
                                 if ($balanceInt >= $targetPrice) {
-
-
-
                                     // Send Target Price back to Owner.
+                                    $this->io->text(sprintf(' -> winner: %s %s', $oldOwner, $targetPriceRaw));
                                     $blockId = $nanoService->send($targetAddress, $oldOwner, $targetPriceRaw);
-                                    $this->io->text(sprintf(' -> winner: %s %s %s', $oldOwner, $targetPriceRaw, $blockId));
+                                    $this->io->text(sprintf(' -> winner block: %s', $blockId));
 
                                     // Generate new Target Address.
                                     $newTargetAddress = $nanoService->createNewAccount();
@@ -183,11 +186,10 @@ class UpdateCommand extends Command
 
                             $refundAmountTotal += $refundAmountInt;
                         }
-
                         $this->io->text(sprintf(' -> total refund: %d', $refundAmountTotal));
 
                         // Refund only if rest balance is equal to refund amount.
-                        if ($restBalanceInt === $refundAmountTotal) {
+                        if ($refundsAmount > 0 && 0 === $diffBalanceInt) {
                             // Execute Refund
                             foreach ($refunds as $refund) {
                                 $sender = $refund['account'];

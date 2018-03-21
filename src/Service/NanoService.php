@@ -4,12 +4,21 @@ namespace HotNano\Service;
 
 use HotNano\Exception\RpcException;
 use HotNano\RaiBlocks\Server;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Output\NullOutput;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
  * Communication to the Nano Core process via RPC.
  */
 class NanoService
 {
+    /**
+     * @var OutputInterface
+     */
+    private $output;
+
     /**
      * @var string
      */
@@ -32,11 +41,20 @@ class NanoService
 
     public function __construct(string $rpcHost, int $rpcPort, string $walletId)
     {
+        $this->output = new NullOutput();
         $this->rpcHost = $rpcHost;
         $this->rpcPort = $rpcPort;
         $this->walletId = $walletId;
 
         $this->server = new Server($this->rpcHost, $this->rpcPort);
+    }
+
+    /**
+     * @param OutputInterface $output
+     */
+    public function setOutput(OutputInterface $output): void
+    {
+        $this->output = $output;
     }
 
     public function createNewAccount()
@@ -149,6 +167,7 @@ class NanoService
 
     public function findNewOwner(string $accountId, ?string $frontier, string $targetPrice, ?string $oldOwner)
     {
+        $this->output->writeln(sprintf('collect account history: %s', $accountId));
         $page = 0;
         $offset = 0;
         $totalHistory = [];
@@ -169,21 +188,23 @@ class NanoService
 
                 $totalHistory[] = $row;
 
-                printf("history row p=%d o=%d: %s\n", $page, $offset, $row['hash']);
+                $this->output->writeln(sprintf("history row p=%d o=%d: %s\n", $page, $offset, $row['hash']));
             }
-            print("\n");
+            // print("\n");
         } while ($page <= 10000 && $historyCount > 0);
+
+        $this->output->writeln(sprintf('collect %d history lines', count($totalHistory)));
 
         $totalHistory = array_reverse($totalHistory);
 
         $lastPoint = null === $frontier;
         // $newFrontier=null;
         $owner = null;
-        $ownerAmount = null;
+        $ownerAmount = 0;
         $refunds = [];
         $refundsAmount = 0;
         foreach ($totalHistory as $row) {
-            printf("history row: %s %s\n", $row['hash'], $row['amount']);
+            // printf("history row: %s %s\n", $row['hash'], $row['amount']);
 
             if (!$lastPoint) {
                 if ($row['hash'] == $frontier) {
@@ -197,13 +218,22 @@ class NanoService
             $rai = $this->raiFromRaw($row['amount']);
 
             // When exact amount matches, and when it's a different owner.
-            if ($targetPrice === $rai && null === $owner && $oldOwner !== $row['account']) {
-                printf(" -> match '%s' === '%s'\n", $targetPrice, $rai);
-                $owner = $row;
-                $ownerAmount = $rai;
+            if (null === $owner && $targetPrice === $rai) {
+                if ($oldOwner === $row['account']) {
+                    $this->output->writeln(sprintf("Refund existing owner: '%s'\n", $rai));
+
+                    $refunds[] = $row;
+                    $refundsAmount += $rai;
+                } else {
+                    $this->output->writeln(sprintf("Match price for new owner '%s' === '%s'\n", $targetPrice, $rai));
+
+                    $owner = $row;
+                    $ownerAmount = $rai;
+                }
             } else {
                 // Refund
-                printf(" -> refund '%s'\n", $rai);
+                $this->output->writeln(sprintf("Refund not matching price '%s' from '%s' (%d)\n", $rai, $row['account'], $refundsAmount));
+
                 $refunds[] = $row;
                 $refundsAmount += $rai;
             }

@@ -15,7 +15,9 @@
             <td>OWNER ADDRESS</td>
             <td>OWNER SINCE</td>
             <td>CURRENT PRICE</td>
+            <td>CURRENT PRICE FORMATTED</td>
             <td>TARGET PRICE</td>
+            <td>TARGET PRICE FORMATTED</td>
             <td>TARGET ADDRESS</td>
             <td>TARGET TIME</td>
             <td>CAN BE CLAIMED</td>
@@ -34,7 +36,9 @@
                 {% endif %}
 
                 <td>{{ entity.currentPrice }}</td>
+                <td>{{ entity.currentPriceFormatted }}</td>
                 <td>{{ entity.targetPrice }}</td>
+                <td>{{ entity.targetPriceFormatted }}</td>
 
                 {% if entity.canBeClaimed %}
                     {% if entity.hasPending %}

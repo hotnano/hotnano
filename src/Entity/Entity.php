@@ -40,11 +40,18 @@ class Entity
     private $ownedSince;
 
     /**
-     * Amount of Nanos payed by the current Owner.
+     * Rai amount payed by the current Owner.
      *
      * @var int|null
      */
     private $currentPrice;
+
+    /**
+     * Current Price in Nano.
+     *
+     * @var string|null
+     */
+    private $currentPriceFormatted;
 
     /**
      * @var string|null
@@ -52,11 +59,18 @@ class Entity
     private $currentAddress;
 
     /**
-     * Amount of Nanos to pay to become the new Owner.
+     * Rai amount to pay to become the new Owner.
      *
      * @var int|null
      */
     private $targetPrice;
+
+    /**
+     * Target Price in Nanos.
+     *
+     * @var string|null
+     */
+    private $targetPriceFormatted;
 
     /**
      * Address to claim the entity.
@@ -243,6 +257,22 @@ class Entity
     /**
      * @return null|string
      */
+    public function getCurrentPriceFormatted(): ?string
+    {
+        return $this->currentPriceFormatted;
+    }
+
+    /**
+     * @param null|string $currentPriceFormatted
+     */
+    public function setCurrentPriceFormatted(?string $currentPriceFormatted): void
+    {
+        $this->currentPriceFormatted = $currentPriceFormatted;
+    }
+
+    /**
+     * @return null|string
+     */
     public function getCurrentAddress(): ?string
     {
         return $this->currentAddress;
@@ -272,6 +302,22 @@ class Entity
         $this->targetPrice = $targetPrice;
 
         $this->update();
+    }
+
+    /**
+     * @return null|string
+     */
+    public function getTargetPriceFormatted(): ?string
+    {
+        return $this->targetPriceFormatted;
+    }
+
+    /**
+     * @param null|string $targetPriceFormatted
+     */
+    public function setTargetPriceFormatted(?string $targetPriceFormatted): void
+    {
+        $this->targetPriceFormatted = $targetPriceFormatted;
     }
 
     /**
@@ -456,9 +502,11 @@ class Entity
             'owned_since' => $ownerSince,
 
             'current_price' => $this->getCurrentPrice(),
-            'current_address'=>'',//@todo
+            'current_price_formatted' => $this->getCurrentPriceFormatted(),
+            // 'current_address' => '',//@todo
 
             'target_price' => $this->getTargetPrice(),
+            'target_price_formatted' => $this->getTargetPriceFormatted(),
             'target_address' => $this->getTargetAddress(),
             'target_time' => $targetTime,
             'has_pending' => $this->isHasPending(),
@@ -511,6 +559,10 @@ class Entity
                 'setter' => 'setCurrentPrice',
             ],
             [
+                'name' => 'current_price_formatted',
+                'setter' => 'setCurrentPriceFormatted',
+            ],
+            [
                 'name' => 'current_address',
                 'setter' => 'setCurrentAddress',
             ],
@@ -521,6 +573,10 @@ class Entity
                     return floatval($val);
                 },
                 'setter' => 'setTargetPrice',
+            ],
+            [
+                'name' => 'target_price_formatted',
+                'setter' => 'setTargetPriceFormatted',
             ],
             [
                 'name' => 'target_address',
