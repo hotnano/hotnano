@@ -37,7 +37,7 @@ class UpdateCommand extends Command
             ->addOption('--rpc_host', null, InputOption::VALUE_OPTIONAL, 'RPC Host to Nano Core client.', '127.0.0.1')
             ->addOption('--rpc_port', null, InputOption::VALUE_OPTIONAL, 'RPC Port to Nano Core client.', 7076)
             ->addOption('--wallet', null, InputOption::VALUE_OPTIONAL, 'Wallet ID')
-            ->addOption('--ttl', null, InputOption::VALUE_OPTIONAL, 'TTL', 120)
+            ->addOption('--deplay', null, InputOption::VALUE_OPTIONAL, 'Delay between claims. Fight spam.', 120)
             ->addOption('--starting_price', null, InputOption::VALUE_OPTIONAL, 'Starting price for new entities in Rai. Default: 0.05 Nano', 50000)
         ;
     }
@@ -50,7 +50,7 @@ class UpdateCommand extends Command
         $rpcHost = $input->getOption('rpc_host');
         $rpcPort = intval($input->getOption('rpc_port'));
         $walletId = $input->getOption('wallet');
-        $ttl = intval($input->getOption('ttl'));
+        $delay = intval($input->getOption('deplay'));
         $startingPrice = intval($input->getOption('starting_price'));
 
         $this->io = new SymfonyStyle($input, $output);
@@ -77,20 +77,27 @@ class UpdateCommand extends Command
             $this->io->text(sprintf('entity %s active=%s', $entity->getId(), $entity->isActive() ? 'Y' : 'N'));
 
             if (!$entity->isActive()) {
+                // Skip inactive entities.
                 continue;
             }
 
             try {
+                // Setup Target Price if it's not set.
                 if (null === $entity->getTargetPrice()) {
                     $entity->setTargetPrice($startingPrice);
                 }
 
+                // Setup Target Address if it's not set.
                 if (null === $entity->getTargetAddress()) {
+                    // Create a new account.
                     $newAccount = $nanoService->createNewAccount();
+
+                    // Assign new account address to entity.
                     $entity->setTargetAddress($newAccount);
 
+                    // Set new Target Time.
                     $targetTime = Carbon::now('UTC');
-                    $targetTime->addSeconds($ttl);
+                    $targetTime->addSeconds($delay);
                     $entity->setTargetTime($targetTime);
                 }
 
@@ -164,7 +171,7 @@ class UpdateCommand extends Command
 
                             // Set new Target Time.
                             $newTargetTime = Carbon::now('UTC');
-                            $newTargetTime->addSeconds($ttl);
+                            $newTargetTime->addSeconds($delay);
                             $entity->setTargetTime($newTargetTime);
 
                             // Set new Target Price.

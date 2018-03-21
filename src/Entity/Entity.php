@@ -35,12 +35,15 @@ class Entity
     private $ownerAddress;
 
     /**
+     * Since when is the current owner?
+     *
      * @var Carbon|null
      */
     private $ownedSince;
 
     /**
-     * Rai amount payed by the current Owner.
+     * Rai amount payed by the current owner.
+     * This is used for calculations. When showing to the user use Current Price Formatted.
      *
      * @var int|null
      */
@@ -48,18 +51,21 @@ class Entity
 
     /**
      * Current Price in Nano.
+     * This is the same as Current Price but in Nano instead of Rai. This string should be used to show the user.
      *
      * @var string|null
      */
     private $currentPriceFormatted;
 
     /**
+     * @deprecated
      * @var string|null
      */
     private $currentAddress;
 
     /**
-     * Rai amount to pay to become the new Owner.
+     * Rai amount to pay to become the new owner.
+     * This is used for calculations. When showing to the user use Target Price Formatted.
      *
      * @var int|null
      */
@@ -67,6 +73,7 @@ class Entity
 
     /**
      * Target Price in Nanos.
+     * This is the same as Target Price but in Nano instead of Rai. This string should be used to show the user.
      *
      * @var string|null
      */
@@ -74,13 +81,14 @@ class Entity
 
     /**
      * Address to claim the entity.
+     * When a user whats to become a new owner of an entity he must transfer Target Price to Target Address.
      *
      * @var string|null
      */
     private $targetAddress;
 
     /**
-     * The next time when to become a new Owner.
+     * The next time when to become a new owner.
      * All Nanos which will be sent during this time will be refunded.
      *
      * @var Carbon|null
@@ -88,6 +96,8 @@ class Entity
     private $targetTime;
 
     /**
+     * This is true, when the entity has pending incoming transactions.
+     *
      * @var bool
      */
     private $hasPending;
@@ -100,6 +110,7 @@ class Entity
     private $frontier;
 
     /**
+     * @deprecated
      * @var int
      */
     private $historyOffset;
@@ -119,7 +130,7 @@ class Entity
         $uuid = Uuid::uuid4();
         $this->id = $uuid->toString();
         $this->isActive = false;
-        $this->historyOffset = 0;
+        // $this->historyOffset = 0;
         $this->hasPending = false;
     }
 
@@ -399,6 +410,7 @@ class Entity
 
     /**
      * @return int
+     * @deprecated
      */
     public function getHistoryOffset(): int
     {
@@ -407,6 +419,7 @@ class Entity
 
     /**
      * @param int $historyOffset
+     * @deprecated
      */
     public function setHistoryOffset(int $historyOffset): void
     {
