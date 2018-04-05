@@ -13,9 +13,9 @@ docker run \
 	--rm \
 	--tty \
 	--interactive \
-	--publish 7075:7075/udp \
-	--publish 7075:7075/tcp \
-	--publish 127.0.0.1:7076:7076 \
+	--publish ${LOCAL_PORT}:7075/udp \
+	--publish ${LOCAL_PORT}:7075/tcp \
+	--publish 127.0.0.1:${RPC_PORT}:7076 \
 	--volume "$HOME/RaiBlocks":/root \
 	--name nano \
 	--hostname nano \
